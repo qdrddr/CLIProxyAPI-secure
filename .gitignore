@@ -8,6 +8,7 @@ cli-proxy-api
 # Configuration
 config.yaml
 .env
+deployment/docker/.cliproxy-test-api-key
 
 # Generated content
 bin/*
