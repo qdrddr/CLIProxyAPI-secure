@@ -1,6 +1,6 @@
 # Nono sandbox layer on eceasy/cli-proxy-api (CLIProxyAPI unchanged).
 # Default tag is updated by scripts/render-dockerfile.sh; compose/build scripts override via build-arg.
-ARG CLI_PROXY_API_TAG=v8.0.9
+ARG CLI_PROXY_API_TAG=v8.0.47
 FROM eceasy/cli-proxy-api:${CLI_PROXY_API_TAG}
 
 ARG NONO_VERSION=0.80.0
