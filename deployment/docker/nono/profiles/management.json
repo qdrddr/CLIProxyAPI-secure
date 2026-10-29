@@ -1,0 +1,25 @@
+{
+  "extends": "nolabs-ai/claude",
+  "meta": {
+    "name": "management",
+    "version": "1.0.0",
+    "description": "Management Center in Docker: nono sandbox with nginx static UI and API reverse proxy."
+  },
+  "filesystem": {
+    "allow": [
+      "/usr/share/nginx/html",
+      "/etc/nginx",
+      "/var/cache/nginx",
+      "/var/log/nginx",
+      "/var/lib/nginx",
+      "/run",
+      "/tmp"
+    ]
+  },
+  "network": {
+    "network_profile": "developer",
+    "allow_domain": [],
+    "open_port": [18317],
+    "listen_port": [8080]
+  }
+}

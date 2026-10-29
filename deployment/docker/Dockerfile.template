@@ -1,0 +1,30 @@
+# Nono sandbox layer on eceasy/cli-proxy-api (CLIProxyAPI unchanged).
+# Default tag is updated by scripts/render-dockerfile.sh; compose/build scripts override via build-arg.
+ARG CLI_PROXY_API_TAG=v8.0.9
+FROM eceasy/cli-proxy-api:${CLI_PROXY_API_TAG}
+
+ARG NONO_VERSION=0.80.0
+ARG TARGETARCH
+
+RUN apt-get update && apt-get install -y --no-install-recommends wget \
+  && wget -q "https://github.com/nolabs-ai/nono/releases/download/v${NONO_VERSION}/nono-cli_${NONO_VERSION}_${TARGETARCH}.deb" \
+  && dpkg -i "nono-cli_${NONO_VERSION}_${TARGETARCH}.deb" \
+  && rm -f "nono-cli_${NONO_VERSION}_${TARGETARCH}.deb" \
+  && apt-get purge -y wget \
+  && apt-get autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV HOME=/root
+
+RUN mkdir -p /root/.config/nono/profiles \
+  && nono pull nolabs-ai/claude
+
+COPY nono/profiles/claude.json /root/.config/nono/profiles/claude.json
+COPY nono/nono-entrypoint.sh /usr/local/bin/nono-entrypoint.sh
+RUN chmod +x /usr/local/bin/nono-entrypoint.sh
+
+WORKDIR /CLIProxyAPI
+EXPOSE 8317
+
+ENTRYPOINT ["/usr/local/bin/nono-entrypoint.sh"]
+CMD ["./CLIProxyAPI"]

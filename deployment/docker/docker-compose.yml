@@ -1,0 +1,77 @@
+# CLIProxyAPI (nono-wrapped) + Management Center UI (same-origin via reverse proxy).
+#
+# Run from this directory:
+#   docker compose up -d
+#
+# 1. Config: default bind is ./config.example.yaml (must be a FILE). Entrypoint stages it for nono.
+#    If Docker created a directory instead of a file:
+#      docker compose down && rm -rf config.yaml cli-proxy-api.config.yaml
+#      cp config.example.yaml config.yaml && export CLI_PROXY_CONFIG_PATH=./config.yaml
+# 2. Optional: pin upstream CLIProxyAPI tag for local builds — export CLI_PROXY_API_TAG=v8.0.9
+#    or run ../../scripts/checkout-submodule-tag.sh v8.0.9
+# 3. UI: http://localhost:8081/management.html (sign in with management key from config).
+# 4. Storage env: copy .env.example to .env (GITSTORE_* / PGSTORE_* / OBJECTSTORE_*).
+
+services:
+  cli-proxy-api:
+    image: ${CLI_PROXY_IMAGE:-bbkudk/cliproxyapi-secure:latest}
+    pull_policy: ${CLI_PROXY_PULL_POLICY:-if_not_present}
+    build:
+      context: .
+      dockerfile: Dockerfile.template
+      args:
+        CLI_PROXY_API_TAG: ${CLI_PROXY_API_TAG:-v8.0.9}
+        NONO_VERSION: ${NONO_VERSION:-0.80.0}
+    container_name: cli-proxy-api
+    ports:
+      - '${CLI_PROXY_PORT:-8317}:8317'
+    environment:
+      NONO_PROFILE: ${CLI_PROXY_NONO_PROFILE:-claude}
+      NONO_RUN_ARGS: ${CLI_PROXY_NONO_RUN_ARGS:-${NONO_RUN_ARGS:-}}
+      GITSTORE_LOCAL_PATH: ${GITSTORE_LOCAL_PATH:-/CLIProxyAPI/data}
+      PGSTORE_LOCAL_PATH: ${PGSTORE_LOCAL_PATH:-/CLIProxyAPI/data}
+      OBJECTSTORE_LOCAL_PATH: ${OBJECTSTORE_LOCAL_PATH:-/CLIProxyAPI/data}
+      GITSTORE_GIT_URL: ${GITSTORE_GIT_URL:-}
+      GITSTORE_GIT_USERNAME: ${GITSTORE_GIT_USERNAME:-}
+      GITSTORE_GIT_TOKEN: ${GITSTORE_GIT_TOKEN:-}
+      GITSTORE_GIT_BRANCH: ${GITSTORE_GIT_BRANCH:-}
+      PGSTORE_DSN: ${PGSTORE_DSN:-}
+      PGSTORE_SCHEMA: ${PGSTORE_SCHEMA:-}
+      OBJECTSTORE_ENDPOINT: ${OBJECTSTORE_ENDPOINT:-}
+      OBJECTSTORE_BUCKET: ${OBJECTSTORE_BUCKET:-}
+      OBJECTSTORE_ACCESS_KEY: ${OBJECTSTORE_ACCESS_KEY:-}
+      OBJECTSTORE_SECRET_KEY: ${OBJECTSTORE_SECRET_KEY:-}
+    volumes:
+      - ${CLI_PROXY_CONFIG_PATH:-./config.example.yaml}:/CLIProxyAPI/config.yaml:ro
+      - ${CLI_PROXY_AUTH_PATH:-./auths}:/root/.cli-proxy-api
+      - cli-proxy-api-data:/CLIProxyAPI/data
+      - ${API_NONO_PROFILE_PATH:-./nono/profiles/claude.json}:/root/.config/nono/profiles/claude.json:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'bash -c "echo > /dev/tcp/127.0.0.1/8317" || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    restart: unless-stopped
+
+  management-center:
+    image: ${MANAGEMENT_IMAGE:-bbkudk/cli-proxy-management-center:v1.26.7}
+    pull_policy: ${MANAGEMENT_PULL_POLICY:-if_not_present}
+    container_name: cli-proxy-management-center
+    depends_on:
+      cli-proxy-api:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-UTC}
+      NGINX_PORT: ${NGINX_PORT:-8080}
+      CLIPROXY_API_BACKEND: ${CLIPROXY_API_BACKEND:-http://cli-proxy-api:8317}
+      NONO_PROFILE: ${NONO_PROFILE:-management}
+      NONO_RUN_ARGS: ${NONO_RUN_ARGS:-}
+    volumes:
+      - ${NONO_PROFILE_PATH:-./nono/profiles/management.json}:/root/.config/nono/profiles/management.json:ro
+    ports:
+      - '${MANAGEMENT_PORT:-8081}:8080'
+    restart: unless-stopped
+
+volumes:
+  cli-proxy-api-data:
