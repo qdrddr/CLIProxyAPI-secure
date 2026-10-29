@@ -18,7 +18,7 @@
 services:
   cli-proxy-api:
     image: ${CLI_PROXY_IMAGE:-bbkudk/cliproxyapi-secure:latest}
-    pull_policy: ${CLI_PROXY_PULL_POLICY:-if_not_present}
+    pull_policy: ${CLI_PROXY_PULL_POLICY:-always}
     build:
       context: .
       dockerfile: Dockerfile.template
