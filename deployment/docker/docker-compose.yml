@@ -12,7 +12,8 @@
 #    Or: docker compose up -d --build
 #    Set CLI_PROXY_API_TAG to match eceasy/cli-proxy-api on Hub (render optional: ../../scripts/render-dockerfile.sh).
 # 4. Push multi-arch to Hub: ../../scripts/build-and-push-image.sh
-# 5. Management UI (optional): docker compose --profile ui up -d (Hub image; linux/amd64 only today).
+# 5. Management UI: docker compose --profile ui pull && docker compose --profile ui up -d --no-build
+#    Hub image is linux/amd64; on Mac/ARM, entrypoint falls back to unsandboxed nginx when Landlock is unavailable.
 # 6. Storage env: copy .env.example to .env (GITSTORE_* / PGSTORE_* / OBJECTSTORE_*).
 
 services:
@@ -66,13 +67,17 @@ services:
     depends_on:
       cli-proxy-api:
         condition: service_healthy
+    entrypoint: ['/usr/local/bin/management-entrypoint.sh']
+    command: ['nginx', '-g', 'daemon off;']
     environment:
       TZ: ${TZ:-UTC}
       NGINX_PORT: ${NGINX_PORT:-8080}
       CLIPROXY_API_BACKEND: ${CLIPROXY_API_BACKEND:-http://cli-proxy-api:8317}
       NONO_PROFILE: ${NONO_PROFILE:-management}
       NONO_RUN_ARGS: ${NONO_RUN_ARGS:-}
+      MANAGEMENT_NONO_SANDBOX: ${MANAGEMENT_NONO_SANDBOX:-auto}
     volumes:
+      - ./nono/management-entrypoint.sh:/usr/local/bin/management-entrypoint.sh:ro
       - ${NONO_PROFILE_PATH:-./nono/profiles/management.json}:/root/.config/nono/profiles/management.json:ro
     ports:
       - '${MANAGEMENT_PORT:-8081}:8080'

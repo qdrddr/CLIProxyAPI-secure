@@ -117,11 +117,10 @@ management:
 
 # Client authentication for the proxy API. These are not upstream provider keys.
 access:
-  # API keys for authentication
-  api-keys:
-    - "your-api-key-1"
-    - "your-api-key-2"
-    - "your-api-key-3"
+  # API keys for client authentication (replace placeholders; example keys disable the proxy API).
+  api-keys: []
+  # api-keys:
+  #   - "generate-a-secret-key-here"
 
 # Optional credential concurrency and observation contracts.
 
@@ -238,7 +237,8 @@ routing:
 requests:
   # Proxy URL. Supports socks5/http/https protocols. Example: socks5://user:pass@192.168.1.1:1080/
   # Per-entry proxy-url also supports "direct" or "none" to bypass both the global proxy-url and environment proxies explicitly.
-  proxy-url: "http://127.0.0.1:3128"
+  # Leave unset in Docker/nono unless you run a reachable proxy (127.0.0.1:3128 is blocked inside the sandbox).
+  # proxy-url: "http://127.0.0.1:3128"
 
   # Maximum time, in seconds, for upstream TLS handshakes made by the shared built-in
   # uTLS client. It applies to both the Claude Code Anthropic transport and the Chrome
