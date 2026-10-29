@@ -20,6 +20,7 @@ RUN mkdir -p /root/.config/nono/profiles \
   && nono pull nolabs-ai/claude
 
 COPY nono/profiles/claude.json /root/.config/nono/profiles/claude.json
+COPY config.example.yaml /CLIProxyAPI/config.example.yaml
 COPY nono/nono-entrypoint.sh /usr/local/bin/nono-entrypoint.sh
 RUN chmod +x /usr/local/bin/nono-entrypoint.sh
 

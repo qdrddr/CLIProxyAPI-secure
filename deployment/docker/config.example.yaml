@@ -1,5 +1,6 @@
-# Configuration template using the v8 layout.
-# Copy this file to config.yaml and replace the client keys and any enabled examples.
+# Configuration template using the v8 layout (committed example).
+# Docker Compose: cp config.example.yaml config.yaml (local config.yaml is gitignored), edit secrets,
+# then docker compose up. Replace client keys and any enabled examples below.
 # Optional upstream credentials and request rules remain commented until configured.
 # Existing legacy configuration files and /v0/management requests remain supported.
 # When both spellings of a field are present, the v8 value wins (including false,
@@ -94,15 +95,16 @@ server:
 management:
   # Whether to allow remote (non-localhost) management access.
   # When false, only localhost can access management endpoints (a key is still required).
-  allow-remote: false
+  # Set true when the Management Center UI runs in another Docker container (same compose stack).
+  allow-remote: true
 
   # Management key. If a plaintext value is provided here, it will be hashed on startup.
   # All management requests (even from localhost) require this key.
   # Leave empty to disable the Management API entirely (404 for /v0/management and /v8/management routes).
-  secret-key: ""
+  secret-key: "change-me"
 
   # Disable the bundled management control panel asset download and HTTP route when true.
-  disable-control-panel: false
+  disable-control-panel: true
 
   # Disable automatic periodic background updates of the management panel from GitHub (default: false).
   # When enabled, the panel is only downloaded on first access if missing, and never auto-updated afterward.
@@ -945,8 +947,9 @@ upstream:
 
 # OAuth/file-backed credentials. Token material stays in the credential store.
 oauth:
-  # Authentication directory (supports ~ for home directory)
-  auth-dir: "~/.cli-proxy-api"
+  # Authentication directory (supports ~ for home directory). Docker/nono entrypoint rewrites this
+  # to /CLIProxyAPI/.staging/auths inside the container.
+  auth-dir: "/root/.cli-proxy-api"
 
   # Core auth auto-refresh and manual refresh-all worker pool size (OAuth/file-based auth token refresh).
   # When > 0, overrides the default worker count (16).
@@ -1225,7 +1228,7 @@ observability:
 # Per-plugin enabled only controls plugins.configs.<pluginID>.enabled and does not implicitly change global plugins.enabled.
 plugins:
   enabled: false
-  dir: "plugins"
+  dir: "/CLIProxyAPI/data/plugins"
   # Additional plugin store registries. The built-in official registry is always included.
   # store-sources:
   #   - "https://example.com/cliproxy-plugins/registry.json"

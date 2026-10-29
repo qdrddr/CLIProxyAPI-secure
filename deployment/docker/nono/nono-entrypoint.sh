@@ -13,7 +13,7 @@ if [ -f /CLIProxyAPI/config.yaml ]; then
   cp /CLIProxyAPI/config.yaml "${CONFIG_STAGE}"
 elif [ -d /CLIProxyAPI/config.yaml ]; then
   echo "WARNING: /CLIProxyAPI/config.yaml is a directory (bad bind mount). Using config.example.yaml from the image." >&2
-  echo "On the host: docker compose down && rm -rf config.yaml cli-proxy-api.config.yaml" >&2
+  echo "On the host: docker compose down && rm -rf config.yaml" >&2
   echo "  cp config.example.yaml config.yaml && export CLI_PROXY_CONFIG_PATH=./config.yaml" >&2
   cp /CLIProxyAPI/config.example.yaml "${CONFIG_STAGE}"
 else
