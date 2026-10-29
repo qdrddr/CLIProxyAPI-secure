@@ -11,6 +11,7 @@ usage() {
   echo "  With tag: checkout submodule + render (local), or build only when SKIP_SUBMODULE_CHECKOUT=1" >&2
   echo "Example: $(basename "$0") v8.0.47" >&2
   echo "Env: DOCKER_IMAGE (default bbkudk/cliproxyapi-secure), NONO_VERSION (default 0.80.0)" >&2
+  echo "     DOCKER_PLATFORMS (default linux/amd64,linux/arm64), BUILDX_BUILDER (optional; CI sets this)" >&2
   echo "     SKIP_SUBMODULE_CHECKOUT=1 — use tag for eceasy/cli-proxy-api only (CI; no submodule fetch)" >&2
 }
 
@@ -73,21 +74,35 @@ if [[ ! "$TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
 fi
 
 IMAGE_REF="${DOCKER_IMAGE}:${TAG}"
+PLATFORMS="${DOCKER_PLATFORMS:-linux/amd64,linux/arm64}"
+BUILDER="${BUILDX_BUILDER:-cliproxyapi-secure-builder}"
 
-docker build \
+if docker buildx inspect "$BUILDER" >/dev/null 2>&1; then
+  docker buildx use "$BUILDER"
+elif [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  echo "Buildx builder ${BUILDER} not found on CI; using current builder." >&2
+  docker buildx ls
+else
+  docker buildx create --name "$BUILDER" --use --driver docker-container
+fi
+
+TAGS=(-t "${IMAGE_REF}")
+HIGHEST_TAG="$(highest_version_tag)"
+if [[ -n "$HIGHEST_TAG" && "$TAG" == "$HIGHEST_TAG" ]]; then
+  TAGS+=(-t "${DOCKER_IMAGE}:latest")
+fi
+
+docker buildx build \
+  --platform "$PLATFORMS" \
   -f "$DOCKERFILE" \
   --build-arg "CLI_PROXY_API_TAG=${TAG}" \
   --build-arg "NONO_VERSION=${NONO_VERSION}" \
-  -t "${IMAGE_REF}" \
+  "${TAGS[@]}" \
+  --push \
   "$DOCKER_CONTEXT"
 
-docker push "${IMAGE_REF}"
-echo "Pushed ${IMAGE_REF}"
-
-HIGHEST_TAG="$(highest_version_tag)"
+echo "Pushed ${IMAGE_REF} (${PLATFORMS})"
 if [[ -n "$HIGHEST_TAG" && "$TAG" == "$HIGHEST_TAG" ]]; then
-  docker tag "${IMAGE_REF}" "${DOCKER_IMAGE}:latest"
-  docker push "${DOCKER_IMAGE}:latest"
   echo "Pushed ${DOCKER_IMAGE}:latest (${TAG})"
 else
   echo "Skipped :latest (newest semver tag is ${HIGHEST_TAG:-none}, built ${TAG})"

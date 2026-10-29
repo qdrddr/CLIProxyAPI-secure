@@ -7,10 +7,13 @@
 #    If Docker created a directory instead of a file:
 #      docker compose down && rm -rf config.yaml cli-proxy-api.config.yaml
 #      cp config.example.yaml config.yaml && export CLI_PROXY_CONFIG_PATH=./config.yaml
-# 2. Optional: pin upstream CLIProxyAPI tag for local builds — export CLI_PROXY_API_TAG=v8.0.9
-#    or run ../../scripts/checkout-submodule-tag.sh v8.0.9
-# 3. UI: http://localhost:8081/management.html (sign in with management key from config).
-# 4. Storage env: copy .env.example to .env (GITSTORE_* / PGSTORE_* / OBJECTSTORE_*).
+# 2. Pull from Docker Hub: docker compose pull && docker compose up -d --no-build
+# 3. Build locally with compose: docker compose build cli-proxy-api && docker compose up -d
+#    Or: docker compose up -d --build
+#    Set CLI_PROXY_API_TAG to match eceasy/cli-proxy-api on Hub (render optional: ../../scripts/render-dockerfile.sh).
+# 4. Push multi-arch to Hub: ../../scripts/build-and-push-image.sh
+# 5. Management UI (optional): docker compose --profile ui up -d (Hub image; linux/amd64 only today).
+# 6. Storage env: copy .env.example to .env (GITSTORE_* / PGSTORE_* / OBJECTSTORE_*).
 
 services:
   cli-proxy-api:
@@ -20,7 +23,7 @@ services:
       context: .
       dockerfile: Dockerfile.template
       args:
-        CLI_PROXY_API_TAG: ${CLI_PROXY_API_TAG:-v8.0.9}
+        CLI_PROXY_API_TAG: ${CLI_PROXY_API_TAG:-v8.0.47}
         NONO_VERSION: ${NONO_VERSION:-0.80.0}
     container_name: cli-proxy-api
     ports:
@@ -55,8 +58,10 @@ services:
     restart: unless-stopped
 
   management-center:
+    profiles: [ui]
     image: ${MANAGEMENT_IMAGE:-bbkudk/cli-proxy-management-center:v1.26.7}
-    pull_policy: ${MANAGEMENT_PULL_POLICY:-if_not_present}
+    platform: ${MANAGEMENT_PLATFORM:-linux/amd64}
+    pull_policy: ${MANAGEMENT_PULL_POLICY:-always}
     container_name: cli-proxy-management-center
     depends_on:
       cli-proxy-api:
