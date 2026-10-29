@@ -22,7 +22,8 @@ RUN mkdir -p /root/.config/nono/profiles \
 COPY nono/profiles/claude.json /root/.config/nono/profiles/claude.json
 COPY config.example.yaml /CLIProxyAPI/config.example.yaml
 COPY nono/nono-entrypoint.sh /usr/local/bin/nono-entrypoint.sh
-RUN chmod +x /usr/local/bin/nono-entrypoint.sh
+COPY nono/cliproxy-run.sh /usr/local/bin/cliproxy-run.sh
+RUN chmod +x /usr/local/bin/nono-entrypoint.sh /usr/local/bin/cliproxy-run.sh
 
 WORKDIR /CLIProxyAPI
 EXPOSE 8317

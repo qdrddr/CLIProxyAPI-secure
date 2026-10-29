@@ -239,7 +239,9 @@ routing:
 requests:
   # Proxy URL. Supports socks5/http/https protocols. Example: socks5://user:pass@192.168.1.1:1080/
   # Per-entry proxy-url also supports "direct" or "none" to bypass both the global proxy-url and environment proxies explicitly.
-  # Leave unset in Docker/nono unless you run a reachable proxy (127.0.0.1:3128 is blocked inside the sandbox).
+  # Docker/nono: leave proxy-url unset here. nono injects HTTP_PROXY/HTTPS_PROXY for its supervised filtering proxy;
+  # cliproxy-run.sh copies that into requests.proxy-url at startup (uTLS OAuth does not read env proxies).
+  # Do not point at 127.0.0.1:3128 unless you also run nono with --proxy-port 3128 and matching proxy credentials.
   # proxy-url: "http://127.0.0.1:3128"
 
   # Maximum time, in seconds, for upstream TLS handshakes made by the shared built-in

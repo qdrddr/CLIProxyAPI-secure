@@ -38,7 +38,7 @@ esac
 
 if [ "$inject_config" = true ]; then
   shift
-  set -- ./CLIProxyAPI --config "${CONFIG_STAGE}" "$@"
+  set -- /usr/local/bin/cliproxy-run.sh "$@"
 fi
 
 # NONO_RUN_ARGS: optional extra nono run flags before "--" (word-split; unset or empty = no extra flags).
