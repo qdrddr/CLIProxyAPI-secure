@@ -13,7 +13,8 @@
 #    Set CLI_PROXY_API_TAG to match eceasy/cli-proxy-api on Hub (render optional: ../../scripts/render-dockerfile.sh).
 # 4. Push multi-arch to Hub: ../../scripts/build-and-push-image.sh
 # 5. Management UI: docker compose --profile ui pull && docker compose --profile ui up -d --no-build
-#    Hub image is linux/amd64; on Mac/ARM, entrypoint falls back to unsandboxed nginx when Landlock is unavailable.
+#    Default image is nono-hardened (arm64+amd64). Do not set MANAGEMENT_PLATFORM=linux/amd64 on Apple Silicon:
+#    qemu amd64 has no Landlock and the legacy fallback entrypoint runs nginx unsandboxed.
 # 6. Storage env: copy .env.example to .env (GITSTORE_* / PGSTORE_* / OBJECTSTORE_*).
 
 services:
@@ -60,24 +61,26 @@ services:
 
   management-center:
     profiles: [ui]
-    image: ${MANAGEMENT_IMAGE:-bbkudk/cli-proxy-management-center:v1.26.7}
-    platform: ${MANAGEMENT_PLATFORM:-linux/amd64}
+    image: ${MANAGEMENT_IMAGE:-bbkudk/cli-proxy-api-management-center-secure:v1.26.7}
     pull_policy: ${MANAGEMENT_PULL_POLICY:-always}
+    build:
+      # UI sources live in the secure repo submodule (see copy-deployment-docker.sh).
+      context: ../../../Cli-Proxy-API-Management-Center-secure/Cli-Proxy-API-Management-Center
+      dockerfile: deployment/docker/Dockerfile
+      args:
+        VERSION: ${MANAGEMENT_VERSION:-v1.26.7}
+        NONO_VERSION: ${NONO_VERSION:-0.80.0}
     container_name: cli-proxy-management-center
     depends_on:
       cli-proxy-api:
         condition: service_healthy
-    entrypoint: ['/usr/local/bin/management-entrypoint.sh']
-    command: ['nginx', '-g', 'daemon off;']
     environment:
       TZ: ${TZ:-UTC}
       NGINX_PORT: ${NGINX_PORT:-8080}
       CLIPROXY_API_BACKEND: ${CLIPROXY_API_BACKEND:-http://cli-proxy-api:8317}
       NONO_PROFILE: ${NONO_PROFILE:-management}
       NONO_RUN_ARGS: ${NONO_RUN_ARGS:-}
-      MANAGEMENT_NONO_SANDBOX: ${MANAGEMENT_NONO_SANDBOX:-auto}
     volumes:
-      - ./nono/management-entrypoint.sh:/usr/local/bin/management-entrypoint.sh:ro
       - ${NONO_PROFILE_PATH:-./nono/profiles/management.json}:/root/.config/nono/profiles/management.json:ro
     ports:
       - '${MANAGEMENT_PORT:-8081}:8080'
