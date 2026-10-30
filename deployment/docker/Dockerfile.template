@@ -3,7 +3,7 @@
 ARG CLI_PROXY_API_TAG=v8.0.47
 FROM eceasy/cli-proxy-api:${CLI_PROXY_API_TAG}
 
-ARG NONO_VERSION=0.80.0
+ARG NONO_VERSION=0.81.0
 ARG TARGETARCH
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget \
