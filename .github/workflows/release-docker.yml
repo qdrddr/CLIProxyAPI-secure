@@ -31,14 +31,12 @@ jobs:
       SKIP_SUBMODULE_CHECKOUT: "1"
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          submodules: false
-
       - name: Resolve release tag
         id: meta
+        env:
+          DEFAULT_NONO: ${{ vars.NONO_VERSION || env.NONO_VERSION }}
         run: |
+          set -euo pipefail
           if [[ "${{ github.event_name }}" == "push" ]]; then
             REF="${{ github.ref_name }}"
           elif [[ "${{ github.event_name }}" == "release" ]]; then
@@ -46,16 +44,33 @@ jobs:
           else
             REF="${{ inputs.tag }}"
           fi
-          # shellcheck source=scripts/lib/parse-release-tag.sh
-          source ./scripts/lib/parse-release-tag.sh
-          NONO_VERSION="${{ vars.NONO_VERSION || env.NONO_VERSION }}"
-          parse_release_tag "$REF"
+          NONO_VERSION="${DEFAULT_NONO}"
+          if [[ "$REF" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            BASE_TAG="${BASH_REMATCH[1]}"
+            NONO_VERSION="${BASH_REMATCH[2]}"
+            DOCKER_TAG="$REF"
+          elif [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            BASE_TAG="$REF"
+            DOCKER_TAG="${BASE_TAG}-${NONO_VERSION}"
+          else
+            echo "Invalid tag ref: ${REF}" >&2
+            exit 1
+          fi
           {
             echo "ref=${REF}"
             echo "base_tag=${BASE_TAG}"
             echo "nono_version=${NONO_VERSION}"
             echo "docker_tag=${DOCKER_TAG}"
+            echo "git_ref=${DOCKER_TAG}"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository at release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.meta.outputs.git_ref }}
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: false
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4

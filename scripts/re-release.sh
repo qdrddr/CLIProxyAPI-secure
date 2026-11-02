@@ -9,7 +9,7 @@ set -euo pipefail
 usage() {
   echo "Usage: $(basename "$0") --app <upstream-tag> [--nono <semver>] [--local | --retag]" >&2
   echo "       $(basename "$0") [<upstream-tag> | <composite-tag>] [--local | --retag]" >&2
-  echo "  (default) Queue CI on main; rebuilds ${DOCKER_IMAGE:-bbkudk/cliproxyapi-secure}:<docker-tag> from current main." >&2
+  echo "  (default) Queue CI on composite git tag; rebuilds ${DOCKER_IMAGE:-bbkudk/cliproxyapi-secure}:<docker-tag> from that tag (use --retag after fixing main)." >&2
   echo "  --local   Build and push on this machine (overwrites same tag on Docker Hub)." >&2
   echo "  --retag   After fixes on main: move composite git tag to HEAD and force-push (triggers tag CI)." >&2
 }
@@ -101,8 +101,13 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-BRANCH="${RERELEASE_BRANCH:-main}"
+if ! git rev-parse "refs/tags/${DOCKER_TAG}" >/dev/null 2>&1 \
+  && ! git ls-remote --exit-code --tags origin "refs/tags/${DOCKER_TAG}" >/dev/null 2>&1; then
+  echo "Git tag ${DOCKER_TAG} not found locally or on origin." >&2
+  echo "Create it with publish-release.sh, or run with --retag after committing fixes on main." >&2
+  exit 1
+fi
 
-echo "Starting CI rebuild for ${RELEASE_REF} on ${BRANCH} → ${DOCKER_IMAGE}:${DOCKER_TAG}"
-gh workflow run "Release Docker Image" --ref "$BRANCH" -f "tag=${RELEASE_REF}"
+echo "Starting CI rebuild for ${RELEASE_REF} at git tag ${DOCKER_TAG} → ${DOCKER_IMAGE}:${DOCKER_TAG}"
+gh workflow run "Release Docker Image" --ref "$DOCKER_TAG" -f "tag=${RELEASE_REF}"
 echo "Workflow queued. Watch: gh run watch --workflow release-docker.yml"
