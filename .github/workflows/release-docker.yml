@@ -91,6 +91,7 @@ jobs:
   create-release:
     if: github.event_name == 'push'
     needs: build-and-push
+    continue-on-error: true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -101,6 +102,7 @@ jobs:
       - name: Create GitHub release if missing
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           TAG="${{ github.ref_name }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
