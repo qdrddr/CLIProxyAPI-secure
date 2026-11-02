@@ -22,7 +22,7 @@ jobs:
       contents: read
     env:
       DOCKER_IMAGE: bbkudk/cliproxyapi-secure
-      NONO_VERSION: "0.80.0"
+      NONO_VERSION: "0.81.0"
       DOCKER_PLATFORMS: linux/amd64,linux/arm64
       SKIP_SUBMODULE_CHECKOUT: "1"
 
@@ -58,8 +58,9 @@ jobs:
 
       - name: Verify manifest platforms
         run: |
-          TAG="${{ github.event.release.tag_name || inputs.tag }}"
-          IMAGE="${{ vars.DOCKER_IMAGE || env.DOCKER_IMAGE }}:${TAG}"
+          BASE_TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          NONO_VERSION="${{ vars.NONO_VERSION || env.NONO_VERSION }}"
+          IMAGE="${{ vars.DOCKER_IMAGE || env.DOCKER_IMAGE }}:${BASE_TAG}-${NONO_VERSION}"
           docker buildx imagetools inspect "$IMAGE" | tee /tmp/manifest.txt
           grep -q 'linux/amd64' /tmp/manifest.txt
           grep -q 'linux/arm64' /tmp/manifest.txt

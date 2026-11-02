@@ -3,8 +3,11 @@
 ARG CLI_PROXY_API_TAG=v8.0.47
 FROM eceasy/cli-proxy-api:${CLI_PROXY_API_TAG}
 
+ARG CLI_PROXY_API_TAG
 ARG NONO_VERSION=0.81.0
 ARG TARGETARCH
+
+LABEL org.opencontainers.image.version="${CLI_PROXY_API_TAG}-${NONO_VERSION}"
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget \
   && wget -q "https://github.com/nolabs-ai/nono/releases/download/v${NONO_VERSION}/nono-cli_${NONO_VERSION}_${TARGETARCH}.deb" \
