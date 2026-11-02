@@ -1,29 +1,41 @@
 #!/usr/bin/env bash
 # Tag this repo with a composite ref, push, and publish a GitHub release (triggers CI).
 # Requires: gh auth login, push access to origin.
-# ./scripts/publish-release.sh
+#
+# ./scripts/publish-release.sh --app v8.0.47 --nono 0.81.0
 # ./scripts/publish-release.sh v8.0.47
+# ./scripts/publish-release.sh v8.0.47-0.81.0
 set -euo pipefail
 
 usage() {
-  echo "Usage: $(basename "$0") [upstream-git-tag]" >&2
-  echo "  No tag: use CLIProxyAPI submodule HEAD (must be exactly on a git tag)" >&2
-  echo "  With tag: checkout that tag in CLIProxyAPI, then release composite tag" >&2
-  echo "Example: NONO_VERSION=0.81.0 $(basename "$0") v8.0.47  # creates v8.0.47-0.81.0" >&2
+  echo "Usage: $(basename "$0") --app <upstream-tag> [--nono <semver>]" >&2
+  echo "       $(basename "$0") [<upstream-tag> | <composite-tag>]" >&2
+  echo "  --app   Upstream app tag (e.g. v8.0.47); --nono defaults to 0.81.0 or NONO_VERSION" >&2
+  echo "  No args: use CLIProxyAPI submodule HEAD (must be exactly on a git tag)" >&2
+  echo "Example: $(basename "$0") --app v8.0.47 --nono 0.81.0  # git/docker tag v8.0.47-0.81.0" >&2
+  echo "Example: $(basename "$0") v8.0.47-0.81.0" >&2
 }
-
-if [[ $# -gt 1 ]]; then
-  usage
-  exit 1
-fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=lib/parse-release-tag.sh
 source "${ROOT}/scripts/lib/parse-release-tag.sh"
+# shellcheck source=lib/resolve-release-args.sh
+source "${ROOT}/scripts/lib/resolve-release-args.sh"
 SUBMODULE="${ROOT}/CLIProxyAPI"
 TEMPLATE="${ROOT}/deployment/docker/Dockerfile.template"
 DOCKER_IMAGE="${DOCKER_IMAGE:-bbkudk/cliproxyapi-secure}"
-NONO_VERSION="${NONO_VERSION:-0.81.0}"
+
+set +e
+resolve_release_tag_args "$@"
+rc=$?
+set -e
+if [[ "$rc" -eq 2 ]]; then
+  usage
+  exit 0
+elif [[ "$rc" -ne 0 ]]; then
+  usage
+  exit 1
+fi
 
 if ! git -C "$SUBMODULE" rev-parse --git-dir >/dev/null 2>&1; then
   echo "CLIProxyAPI submodule not initialized at ${SUBMODULE}." >&2
@@ -36,17 +48,17 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ $# -eq 1 ]]; then
-  parse_release_tag "$1"
-  "${ROOT}/scripts/checkout-submodule-tag.sh" "$BASE_TAG"
-else
+if [[ "${RESOLVE_FROM_SUBMODULE:-0}" -eq 1 ]]; then
   upstream_tag="$(git -C "$SUBMODULE" describe --tags --exact-match HEAD 2>/dev/null || true)"
   if [[ -z "$upstream_tag" ]]; then
     echo "CLIProxyAPI HEAD is not exactly on a git tag." >&2
-    echo "Pass a tag: ./scripts/publish-release.sh v8.0.47" >&2
+    echo "Pass --app v8.0.47 or a positional tag." >&2
     exit 1
   fi
+  export NONO_VERSION
   parse_release_tag "$upstream_tag"
+else
+  "${ROOT}/scripts/checkout-submodule-tag.sh" "$BASE_TAG"
 fi
 
 RELEASE_TAG="$DOCKER_TAG"
@@ -60,7 +72,7 @@ cd "$ROOT"
 
 if git rev-parse "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
   echo "Tag ${RELEASE_TAG} already exists in this repository." >&2
-  echo "Delete locally/remotely first or choose another tag." >&2
+  echo "Use ./scripts/re-release.sh ${RELEASE_TAG} to rebuild the same tag." >&2
   exit 1
 fi
 

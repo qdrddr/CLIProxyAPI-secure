@@ -14,8 +14,12 @@ Requires **Docker**; release paths need **`gh`** and **`docker login`**.
 ## Release
 
 ```bash
-# Script (upstream arg → composite tag v8.0.47-0.81.0)
-NONO_VERSION=0.81.0 ./scripts/publish-release.sh v8.0.47
+# Primary
+./scripts/publish-release.sh --app v8.0.47 --nono 0.81.0
+
+# Legacy positional (upstream or composite)
+./scripts/publish-release.sh v8.0.47
+./scripts/publish-release.sh v8.0.47-0.81.0
 
 # Tag-only (CI runs on push; release auto-created after build if missing)
 git tag -a v8.0.47-0.81.0 -m "CLIProxyAPI v8.0.47 + nono 0.81.0"
@@ -24,6 +28,7 @@ git push origin v8.0.47-0.81.0
 ./scripts/re-release.sh v8.0.47-0.81.0 --local
 
 # Same composite tag after a fix on main (overwrites Docker Hub tag)
+./scripts/re-release.sh --app v8.0.47 --nono 0.81.0
 ./scripts/re-release.sh v8.0.47-0.81.0              # workflow_dispatch from main
 ./scripts/re-release.sh v8.0.47-0.81.0 --retag      # force-move git tag → tag-push CI
 ```

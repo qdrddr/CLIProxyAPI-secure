@@ -1,43 +1,72 @@
 #!/usr/bin/env bash
 # Rebuild and push an existing release (same Docker tag / composite git tag).
-# ./scripts/re-release.sh v8.0.47-0.81.0              # CI from main (workflow_dispatch)
-# ./scripts/re-release.sh v8.0.47-0.81.0 --local      # docker build & push locally
-# ./scripts/re-release.sh v8.0.47-0.81.0 --retag      # move git tag to HEAD, force-push → tag CI
+# ./scripts/re-release.sh --app v8.0.47 --nono 0.81.0
+# ./scripts/re-release.sh v8.0.47-0.81.0
+# ./scripts/re-release.sh v8.0.47-0.81.0 --local
+# ./scripts/re-release.sh --app v8.0.47 --nono 0.81.0 --retag
 set -euo pipefail
 
 usage() {
-  echo "Usage: $(basename "$0") <git-tag> [--local | --retag]" >&2
-  echo "  <git-tag> upstream or composite (e.g. v8.0.47 or v8.0.47-0.81.0)" >&2
+  echo "Usage: $(basename "$0") --app <upstream-tag> [--nono <semver>] [--local | --retag]" >&2
+  echo "       $(basename "$0") [<upstream-tag> | <composite-tag>] [--local | --retag]" >&2
   echo "  (default) Queue CI on main; rebuilds ${DOCKER_IMAGE:-bbkudk/cliproxyapi-secure}:<docker-tag> from current main." >&2
   echo "  --local   Build and push on this machine (overwrites same tag on Docker Hub)." >&2
   echo "  --retag   After fixes on main: move composite git tag to HEAD and force-push (triggers tag CI)." >&2
 }
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
-  usage
-  exit 1
-fi
-
-TAG="$1"
-MODE="${2:-ci}"
-
-if [[ "$MODE" != "--local" && "$MODE" != "ci" && "$MODE" != "--retag" ]]; then
-  usage
-  exit 1
-fi
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=lib/parse-release-tag.sh
 source "${ROOT}/scripts/lib/parse-release-tag.sh"
+# shellcheck source=lib/resolve-release-args.sh
+source "${ROOT}/scripts/lib/resolve-release-args.sh"
 DOCKER_IMAGE="${DOCKER_IMAGE:-bbkudk/cliproxyapi-secure}"
-NONO_VERSION="${NONO_VERSION:-0.81.0}"
-parse_release_tag "$TAG"
 
-# Composite releases use the docker tag as the git tag; legacy upstream-only tags use DOCKER_TAG.
+MODE="ci"
+RESOLVE_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --local | --retag)
+      MODE="$1"
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      RESOLVE_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ ${#RESOLVE_ARGS[@]} -eq 0 ]]; then
+  usage
+  exit 1
+fi
+
+set +e
+resolve_release_tag_args "${RESOLVE_ARGS[@]}"
+rc=$?
+set -e
+if [[ "$rc" -eq 2 ]]; then
+  usage
+  exit 0
+elif [[ "$rc" -ne 0 ]]; then
+  usage
+  exit 1
+fi
+
+if [[ "${RESOLVE_FROM_SUBMODULE:-0}" -eq 1 ]]; then
+  echo "re-release requires --app or a positional tag." >&2
+  usage
+  exit 1
+fi
+
 RETAG_NAME="$DOCKER_TAG"
 
 if [[ "$MODE" == "--local" ]]; then
-  exec "${ROOT}/scripts/build-and-push-image.sh" "$TAG"
+  exec "${ROOT}/scripts/build-and-push-image.sh" "$RELEASE_REF"
 fi
 
 cd "$ROOT"
@@ -74,6 +103,6 @@ fi
 
 BRANCH="${RERELEASE_BRANCH:-main}"
 
-echo "Starting CI rebuild for ${TAG} on ${BRANCH} → ${DOCKER_IMAGE}:${DOCKER_TAG}"
-gh workflow run "Release Docker Image" --ref "$BRANCH" -f "tag=${TAG}"
+echo "Starting CI rebuild for ${RELEASE_REF} on ${BRANCH} → ${DOCKER_IMAGE}:${DOCKER_TAG}"
+gh workflow run "Release Docker Image" --ref "$BRANCH" -f "tag=${RELEASE_REF}"
 echo "Workflow queued. Watch: gh run watch --workflow release-docker.yml"
