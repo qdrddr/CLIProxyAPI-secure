@@ -7,7 +7,7 @@ parse_release_tag() {
   local ref="$1"
   local default_nono="${NONO_VERSION_DEFAULT:-0.81.0}"
 
-  if [[ "$ref" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+  if [[ "$ref" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-v?([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
     BASE_TAG="${BASH_REMATCH[1]}"
     NONO_VERSION="${BASH_REMATCH[2]}"
     GIT_TAG="$ref"
