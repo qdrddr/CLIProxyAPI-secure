@@ -1,21 +1,25 @@
 name: Release Docker Image
 
 on:
+  push:
+    tags:
+      - 'v*-*.*.*'
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: eceasy/cli-proxy-api tag to wrap (e.g. v8.0.47)
+        description: Upstream or composite tag (e.g. v8.0.47 or v8.0.47-0.81.0)
         required: true
         type: string
 
 concurrency:
-  group: release-docker-${{ github.event.release.tag_name || inputs.tag }}
+  group: release-docker-${{ github.event.release.tag_name || github.ref_name || inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   build-and-push:
+    if: github.event_name != 'release' || !contains(github.event.release.tag_name, '-')
     runs-on: ubuntu-latest
     environment: build
     permissions:
@@ -31,6 +35,27 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: false
+
+      - name: Resolve release tag
+        id: meta
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            REF="${{ github.ref_name }}"
+          elif [[ "${{ github.event_name }}" == "release" ]]; then
+            REF="${{ github.event.release.tag_name }}"
+          else
+            REF="${{ inputs.tag }}"
+          fi
+          # shellcheck source=scripts/lib/parse-release-tag.sh
+          source ./scripts/lib/parse-release-tag.sh
+          NONO_VERSION="${{ vars.NONO_VERSION || env.NONO_VERSION }}"
+          parse_release_tag "$REF"
+          {
+            echo "ref=${REF}"
+            echo "base_tag=${BASE_TAG}"
+            echo "nono_version=${NONO_VERSION}"
+            echo "docker_tag=${DOCKER_TAG}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -48,19 +73,37 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push multi-arch image
-        run: ./scripts/build-and-push-image.sh "${{ github.event.release.tag_name || inputs.tag }}"
+        run: ./scripts/build-and-push-image.sh "${{ steps.meta.outputs.ref }}"
         env:
           DOCKER_IMAGE: ${{ vars.DOCKER_IMAGE || env.DOCKER_IMAGE }}
-          NONO_VERSION: ${{ vars.NONO_VERSION || env.NONO_VERSION }}
+          NONO_VERSION: ${{ steps.meta.outputs.nono_version }}
           DOCKER_PLATFORMS: ${{ vars.DOCKER_PLATFORMS || env.DOCKER_PLATFORMS }}
           BUILDX_BUILDER: ${{ steps.buildx.outputs.name }}
           SKIP_SUBMODULE_CHECKOUT: "1"
 
       - name: Verify manifest platforms
         run: |
-          BASE_TAG="${{ github.event.release.tag_name || inputs.tag }}"
-          NONO_VERSION="${{ vars.NONO_VERSION || env.NONO_VERSION }}"
-          IMAGE="${{ vars.DOCKER_IMAGE || env.DOCKER_IMAGE }}:${BASE_TAG}-${NONO_VERSION}"
+          IMAGE="${{ vars.DOCKER_IMAGE || env.DOCKER_IMAGE }}:${{ steps.meta.outputs.docker_tag }}"
           docker buildx imagetools inspect "$IMAGE" | tee /tmp/manifest.txt
           grep -q 'linux/amd64' /tmp/manifest.txt
           grep -q 'linux/arm64' /tmp/manifest.txt
+
+  create-release:
+    if: github.event_name == 'push'
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub release if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists; skipping."
+            exit 0
+          fi
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes

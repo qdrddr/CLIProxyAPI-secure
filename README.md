@@ -2,7 +2,7 @@
 
 Docker image that wraps **[CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)** ([`eceasy/cli-proxy-api`](https://hub.docker.com/r/eceasy/cli-proxy-api)) in a thin **[nono](https://github.com/nolabs-ai/nono)** sandbox. The API binary and config stay upstream; this repo adds the entrypoint, Landlock-friendly staging, and network profiles.
 
-Published as **`bbkudk/cliproxyapi-secure:<tag>`** (tag matches the upstream CLIProxyAPI release, e.g. `v8.0.47`).
+Published as **`bbkudk/cliproxyapi-secure:<tag>`** with composite tags **`v{upstream}-{nono}`** (e.g. `v8.0.47-0.81.0` wraps upstream `v8.0.47` and nono `0.81.0`).
 
 ## Quick start
 

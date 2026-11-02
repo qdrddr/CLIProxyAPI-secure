@@ -6,8 +6,8 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $(basename "$0") <git-tag> [--local]" >&2
-  echo "  <git-tag> must match a CLIProxyAPI release tag (e.g. v8.0.47)" >&2
-  echo "Example: $(basename "$0") v8.0.47 --local" >&2
+  echo "  <git-tag> upstream or composite (e.g. v8.0.47 or v8.0.47-0.81.0)" >&2
+  echo "Example: $(basename "$0") v8.0.47-0.81.0 --local" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -24,7 +24,11 @@ if [[ "$MODE" != "--local" && "$MODE" != "ci" ]]; then
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/parse-release-tag.sh
+source "${ROOT}/scripts/lib/parse-release-tag.sh"
 DOCKER_IMAGE="${DOCKER_IMAGE:-bbkudk/cliproxyapi-secure}"
+NONO_VERSION="${NONO_VERSION:-0.81.0}"
+parse_release_tag "$TAG"
 
 if [[ "$MODE" == "--local" ]]; then
   exec "${ROOT}/scripts/build-and-push-image.sh" "$TAG"
@@ -38,6 +42,6 @@ fi
 cd "$ROOT"
 BRANCH="${RERELEASE_BRANCH:-main}"
 
-echo "Starting CI rebuild for ${TAG} on ${BRANCH} → ${DOCKER_IMAGE}:${TAG}"
+echo "Starting CI rebuild for ${TAG} on ${BRANCH} → ${DOCKER_IMAGE}:${DOCKER_TAG}"
 gh workflow run "Release Docker Image" --ref "$BRANCH" -f "tag=${TAG}"
 echo "Workflow queued. Watch: gh run watch --workflow release-docker.yml"
