@@ -1,30 +1,51 @@
 #!/usr/bin/env bash
-# Parse upstream-only or composite release refs: v8.0.47 or v8.0.47-0.81.0
+# Canonical release refs only: v8.0.52-v0.81.0 (git tag == Docker Hub tag).
 # Sets and exports BASE_TAG, NONO_VERSION, GIT_TAG, DOCKER_TAG.
 set -euo pipefail
 
+CANONICAL_TAG_RE='^(v[0-9]+\.[0-9]+\.[0-9]+)-v([0-9]+\.[0-9]+\.[0-9]+)$'
+
+canonical_release_tag() {
+  local base="$1"
+  local nono="$2"
+  nono="${nono#v}"
+
+  if [[ ! "$base" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Invalid app tag: ${base} (expected vX.Y.Z)" >&2
+    return 1
+  fi
+  if [[ ! "$nono" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Invalid nono version: ${nono}" >&2
+    return 1
+  fi
+
+  BASE_TAG="$base"
+  NONO_VERSION="$nono"
+  DOCKER_TAG="${BASE_TAG}-v${NONO_VERSION}"
+  GIT_TAG="$DOCKER_TAG"
+  export BASE_TAG NONO_VERSION GIT_TAG DOCKER_TAG
+}
+
 parse_release_tag() {
   local ref="$1"
-  local default_nono="${NONO_VERSION_DEFAULT:-0.81.0}"
 
-  if [[ "$ref" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-v?([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+  if [[ "$ref" =~ $CANONICAL_TAG_RE ]]; then
     BASE_TAG="${BASH_REMATCH[1]}"
     NONO_VERSION="${BASH_REMATCH[2]}"
     GIT_TAG="$ref"
     DOCKER_TAG="$ref"
-  else
-    BASE_TAG="$ref"
-    NONO_VERSION="${NONO_VERSION:-$default_nono}"
-    GIT_TAG="$ref"
-    DOCKER_TAG="${BASE_TAG}-${NONO_VERSION}"
+    export BASE_TAG NONO_VERSION GIT_TAG DOCKER_TAG
+    return 0
   fi
 
-  export BASE_TAG NONO_VERSION GIT_TAG DOCKER_TAG
+  echo "Invalid release tag: ${ref}" >&2
+  echo "Expected canonical form v{app}-v{nono} (e.g. v8.0.52-v0.81.0)." >&2
+  return 1
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ $# -ne 1 ]]; then
-    echo "Usage: $(basename "$0") <tag-ref>" >&2
+    echo "Usage: $(basename "$0") <canonical-tag>" >&2
     exit 1
   fi
   parse_release_tag "$1"

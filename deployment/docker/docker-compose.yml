@@ -20,13 +20,13 @@
 
 services:
   cli-proxy-api:
-    image: ${CLI_PROXY_IMAGE:-bbkudk/cliproxyapi-secure:v8.0.47-0.81.0}
+    image: ${CLI_PROXY_IMAGE:-bbkudk/cliproxyapi-secure:v8.0.52-v0.81.0}
     pull_policy: ${CLI_PROXY_PULL_POLICY:-always}
     build:
       context: .
       dockerfile: Dockerfile.template
       args:
-        CLI_PROXY_API_TAG: ${CLI_PROXY_API_TAG:-v8.0.47}
+        CLI_PROXY_API_TAG: ${CLI_PROXY_API_TAG:-v8.0.52}
         NONO_VERSION: ${NONO_VERSION:-0.81.0}
     container_name: cli-proxy-api
     ports:
@@ -63,14 +63,14 @@ services:
     restart: unless-stopped
 
   management-center:
-    image: ${MANAGEMENT_IMAGE:-bbkudk/cli-proxy-api-management-center-secure:v1.26.7-0.81.0}
+    image: ${MANAGEMENT_IMAGE:-bbkudk/cli-proxy-api-management-center-secure:v1.27.2-v0.81.0}
     pull_policy: ${MANAGEMENT_PULL_POLICY:-always}
     build:
       # UI sources live in the secure repo submodule (see copy-deployment-docker.sh).
       context: ../../../Cli-Proxy-API-Management-Center-secure/Cli-Proxy-API-Management-Center
       dockerfile: deployment/docker/Dockerfile
       args:
-        VERSION: ${MANAGEMENT_VERSION:-v1.26.7}
+        VERSION: ${MANAGEMENT_VERSION:-v1.27.2}
         NONO_VERSION: ${NONO_VERSION:-0.81.0}
     container_name: cli-proxy-management-center
     depends_on:

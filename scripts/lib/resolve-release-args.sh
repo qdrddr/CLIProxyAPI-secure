@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Parse publish/re-release CLI args. Requires parse-release-tag.sh sourced first.
-# Primary:   --app v8.0.47 --nono 0.81.0
-# Legacy:    v8.0.47 | v8.0.47-0.81.0  (optional NONO_VERSION env for upstream-only)
+# Primary:   --app v8.0.52 --nono 0.81.0  → v8.0.52-v0.81.0
+# Positional: v8.0.52-v0.81.0 (canonical git + Docker Hub tag)
 # No args:   sets RESOLVE_FROM_SUBMODULE=1
 set -euo pipefail
 
@@ -67,16 +67,15 @@ resolve_release_tag_args() {
 
   if [[ -n "$app" ]]; then
     export NONO_VERSION
-    parse_release_tag "$app"
+    canonical_release_tag "$app" "${NONO_VERSION#v}"
     RELEASE_REF="$DOCKER_TAG"
     export RELEASE_REF
     return 0
   fi
 
   if [[ -n "$positional" ]]; then
-    export NONO_VERSION
     parse_release_tag "$positional"
-    RELEASE_REF="$positional"
+    RELEASE_REF="$DOCKER_TAG"
     export RELEASE_REF
     return 0
   fi

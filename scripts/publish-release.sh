@@ -2,18 +2,17 @@
 # Tag this repo with a composite ref, push, and publish a GitHub release (triggers CI).
 # Requires: gh auth login, push access to origin.
 #
-# ./scripts/publish-release.sh --app v8.0.47 --nono 0.81.0
-# ./scripts/publish-release.sh v8.0.47
-# ./scripts/publish-release.sh v8.0.47-0.81.0
+# ./scripts/publish-release.sh --app v8.0.52 --nono 0.81.0
+# ./scripts/publish-release.sh v8.0.52-v0.81.0
 set -euo pipefail
 
 usage() {
   echo "Usage: $(basename "$0") --app <upstream-tag> [--nono <semver>]" >&2
-  echo "       $(basename "$0") [<upstream-tag> | <composite-tag>]" >&2
-  echo "  --app   Upstream app tag (e.g. v8.0.47); --nono defaults to 0.81.0 or NONO_VERSION" >&2
+  echo "       $(basename "$0") <canonical-tag>" >&2
+  echo "  --app   Upstream app tag (e.g. v8.0.52); --nono defaults to 0.81.0 or NONO_VERSION" >&2
   echo "  No args: use CLIProxyAPI submodule HEAD (must be exactly on a git tag)" >&2
-  echo "Example: $(basename "$0") --app v8.0.47 --nono 0.81.0  # git/docker tag v8.0.47-0.81.0" >&2
-  echo "Example: $(basename "$0") v8.0.47-0.81.0" >&2
+  echo "Example: $(basename "$0") --app v8.0.52 --nono 0.81.0  # git/docker tag v8.0.52-v0.81.0" >&2
+  echo "Example: $(basename "$0") v8.0.52-v0.81.0" >&2
 }
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -56,7 +55,7 @@ if [[ "${RESOLVE_FROM_SUBMODULE:-0}" -eq 1 ]]; then
     exit 1
   fi
   export NONO_VERSION
-  parse_release_tag "$upstream_tag"
+  canonical_release_tag "$upstream_tag" "${NONO_VERSION#v}"
 else
   "${ROOT}/scripts/checkout-submodule-tag.sh" "$BASE_TAG"
 fi

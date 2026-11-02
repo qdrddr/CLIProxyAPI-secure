@@ -9,8 +9,8 @@ usage() {
   echo "Usage: $(basename "$0") [git-tag]" >&2
   echo "  No tag: build from CLIProxyAPI submodule HEAD (must be exactly on a git tag)" >&2
   echo "  With tag: checkout submodule + render (local), or build only when SKIP_SUBMODULE_CHECKOUT=1" >&2
-  echo "Example: $(basename "$0") v8.0.47  # pushes bbkudk/cliproxyapi-secure:v8.0.47-0.81.0" >&2
-  echo "         $(basename "$0") v8.0.47-0.81.0  # composite git/docker tag" >&2
+  echo "Example: $(basename "$0") v8.0.52-v0.81.0  # canonical git + Docker Hub tag" >&2
+  echo "         No tag: submodule HEAD tag + NONO_VERSION → v{app}-v{nono}" >&2
   echo "Env: DOCKER_IMAGE (default bbkudk/cliproxyapi-secure), NONO_VERSION (default 0.81.0)" >&2
   echo "     DOCKER_PLATFORMS (default linux/amd64,linux/arm64), BUILDX_BUILDER (optional; CI sets this)" >&2
   echo "     SKIP_SUBMODULE_CHECKOUT=1 — use tag for eceasy/cli-proxy-api only (CI; no submodule fetch)" >&2
@@ -55,10 +55,10 @@ else
   upstream_tag="$(git -C "$SUBMODULE" describe --tags --exact-match HEAD 2>/dev/null || true)"
   if [[ -z "$upstream_tag" ]]; then
     echo "CLIProxyAPI HEAD is not exactly on a git tag." >&2
-    echo "Pass a tag: ./scripts/build-and-push-image.sh v8.0.47" >&2
+    echo "Pass a tag: ./scripts/build-and-push-image.sh v8.0.52-v0.81.0" >&2
     exit 1
   fi
-  parse_release_tag "$upstream_tag"
+  canonical_release_tag "$upstream_tag" "${NONO_VERSION#v}"
   "${ROOT}/scripts/render-dockerfile.sh" "$BASE_TAG"
 fi
 
