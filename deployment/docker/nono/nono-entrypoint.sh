@@ -1,5 +1,22 @@
 #!/bin/sh
+# Baked into bbkudk/cliproxyapi-secure: nono-cli wraps CLIProxyAPI (no separate nono init/sidecar).
+# Docker Desktop: `nono run` supervises the process and sets HTTP(S)_PROXY for egress filtering.
+# Talos/K8s (Landlock): set NONO_K8S_PROXY=1 — in-container `nono proxy` filters egress; app listens directly.
 set -eu
+
+nono_k8s_proxy_enabled() {
+  case "${NONO_K8S_PROXY:-}" in 1|true|yes|TRUE|YES) return 0 ;; esac
+  return 1
+}
+
+start_nono_filter_proxy() {
+  PROXY_PORT="${NONO_PROXY_PORT:-18318}"
+  export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  nono proxy --port "${PROXY_PORT}" --profile "${NONO_PROFILE:-claude}" --no-auth &
+  export HTTP_PROXY="http://127.0.0.1:${PROXY_PORT}"
+  export HTTPS_PROXY="${HTTP_PROXY}"
+  export NO_PROXY="${NO_PROXY:-127.0.0.1,localhost,10.0.0.0/8,192.168.0.0/16,.svc,.cluster.local}"
+}
 
 STAGE=/CLIProxyAPI/.staging
 AUTH_STAGE="${STAGE}/auths"
@@ -39,6 +56,11 @@ esac
 if [ "$inject_config" = true ]; then
   shift
   set -- /usr/local/bin/cliproxy-run.sh "$@"
+fi
+
+if nono_k8s_proxy_enabled; then
+  start_nono_filter_proxy
+  exec "$@"
 fi
 
 # NONO_RUN_ARGS: optional extra nono run flags before "--" (word-split; unset or empty = no extra flags).

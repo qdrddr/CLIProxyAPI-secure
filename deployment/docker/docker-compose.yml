@@ -1,4 +1,5 @@
-# CLIProxyAPI (nono-wrapped) + Management Center UI (same-origin via reverse proxy).
+# CLIProxyAPI (nono-cli baked in; entrypoint wraps the app) + Management Center UI (same-origin via reverse proxy).
+# No separate nono init/sidecar — egress filtering is nono proxy inside each application container.
 #
 # Run from this directory:
 #   docker compose up -d
