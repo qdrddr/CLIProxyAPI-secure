@@ -22,6 +22,10 @@ git tag -a v8.0.47-0.81.0 -m "CLIProxyAPI v8.0.47 + nono 0.81.0"
 git push origin v8.0.47-0.81.0
 
 ./scripts/re-release.sh v8.0.47-0.81.0 --local
+
+# Same composite tag after a fix on main (overwrites Docker Hub tag)
+./scripts/re-release.sh v8.0.47-0.81.0              # workflow_dispatch from main
+./scripts/re-release.sh v8.0.47-0.81.0 --retag      # force-move git tag → tag-push CI
 ```
 
 Legacy upstream-only git tags (e.g. `v8.0.47`) still trigger CI via **GitHub Release published**; Docker Hub tag remains `v8.0.47-0.81.0` when `NONO_VERSION=0.81.0`.
