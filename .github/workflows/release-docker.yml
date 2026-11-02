@@ -95,6 +95,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
       - name: Create GitHub release if missing
         env:
           GH_TOKEN: ${{ github.token }}
