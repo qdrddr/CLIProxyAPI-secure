@@ -6,13 +6,13 @@ on:
       - 'v*-v*'
   workflow_dispatch:
     inputs:
-      tag:
-        description: Canonical tag (e.g. v8.0.52-v0.81.0)
+      release:
+        description: Release name (canonical tag, e.g. v8.0.52-v0.81.0)
         required: true
         type: string
 
 concurrency:
-  group: release-docker-${{ github.ref_name || inputs.tag }}
+  group: release-docker-${{ github.ref_name || inputs.release }}
   cancel-in-progress: false
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             REF="${{ github.ref_name }}"
           else
-            REF="${{ inputs.tag }}"
+            REF="${{ inputs.release }}"
           fi
           # shellcheck source=scripts/lib/parse-release-tag.sh
           source ./scripts/lib/parse-release-tag.sh

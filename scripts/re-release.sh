@@ -109,5 +109,5 @@ if ! git rev-parse "refs/tags/${DOCKER_TAG}" >/dev/null 2>&1 \
 fi
 
 echo "Starting CI rebuild for ${RELEASE_REF} at git tag ${DOCKER_TAG} → ${DOCKER_IMAGE}:${DOCKER_TAG}"
-gh workflow run "Release Docker Image" --ref "$DOCKER_TAG" -f "tag=${RELEASE_REF}"
+gh workflow run "Release Docker Image" --ref "$DOCKER_TAG" -f "release=${RELEASE_REF}"
 echo "Workflow queued. Watch: gh run watch --workflow release-docker.yml"
